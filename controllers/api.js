@@ -12,29 +12,29 @@ exports.query = function(req, res) {
   var code = url.query.code;
   if (!code)
     return server.respond(req, res, 500, { error: 'Missing code' });
-  
+
   var codeVer = url.query.version;
   if (codeVer != config.codever)
     return server.respond(req, res, 500, { error: 'Missing or invalid version' });
-  
+
   fingerprinter.decodeCodeString(code, function(err, fp) {
     if (err) {
       log.error('Failed to decode codes for query: ' + err);
       return server.respond(req, res, 500, { error: 'Failed to decode codes for query: ' + err });
     }
-    
+
     fp.codever = codeVer;
-    
+
     fingerprinter.bestMatchForQuery(fp, config.code_threshold, function(err, result) {
       if (err) {
         log.warn('Failed to complete query: ' + err);
         return server.respond(req, res, 500, { error: 'Failed to complete query: ' + err });
       }
-      
+
       var duration = new Date() - req.start;
       log.debug('Completed lookup in ' + duration + 'ms. success=' +
         !!result.success + ', status=' + result.status);
-      
+
       return server.respond(req, res, 200, { success: !!result.success,
         status: result.status, match: result.match || null });
     });
@@ -50,7 +50,7 @@ exports.ingest = function(req, res) {
   var length = req.body.length;
   var track = req.body.track;
   var artist = req.body.artist;
-  
+
   if (!code)
     return server.respond(req, res, 500, { error: 'Missing "code" field' });
   if (!codeVer)
@@ -63,28 +63,28 @@ exports.ingest = function(req, res) {
     return server.respond(req, res, 500, { error: 'Missing "track" field' });
   if (!artist)
     return server.respond(req, res, 500, { error: 'Missing "artist" field' });
-  
+
   fingerprinter.decodeCodeString(code, function(err, fp) {
     if (err || !fp.codes.length) {
       log.error('Failed to decode codes for ingest: ' + err);
       return server.respond(req, res, 500, { error: 'Failed to decode codes for ingest: ' + err });
     }
-    
+
     fp.codever = codeVer;
     fp.track = track;
-    fp.length = length;
+    fp.length = parseInt(length, 10);
     fp.artist = artist;
-    
+
     fingerprinter.ingest(fp, function(err, result) {
       if (err) {
         log.error('Failed to ingest track: ' + err);
         return server.respond(req, res, 500, { error: 'Failed to ingest track: ' + err });
       }
-      
+
       var duration = new Date() - req.start;
       log.debug('Ingested new track in ' + duration + 'ms. track_id=' +
         result.track_id + ', artist_id=' + result.artist_id);
-      
+
       result.success = true;
       return server.respond(req, res, 200, result);
     });
